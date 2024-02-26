@@ -3,6 +3,7 @@ package br.com.alura.forum.service
 import br.com.alura.forum.dto.NewTopicForm
 import br.com.alura.forum.dto.TopicView
 import br.com.alura.forum.dto.UpdateTopicForm
+import br.com.alura.forum.exception.NotFoundException
 import br.com.alura.forum.mapper.TopicFormMapper
 import br.com.alura.forum.mapper.TopicViewMapper
 import br.com.alura.forum.model.Topic
@@ -14,14 +15,16 @@ class TopicService(
     private val topicViewMapper: TopicViewMapper,
     private val topicFormMapper: TopicFormMapper
 ) {
+    val notFoundExceptionMessage = "Não foi encontrado o tópico"
+
     fun list(): List<TopicView> {
         return topics.map { topic -> topicViewMapper.map(topic) }
     }
 
     fun getById(id: Long): TopicView {
-        val topic = topics.first { topic ->
+        val topic = topics.stream().filter { topic ->
             topic.id == id
-        }
+        }.findFirst().orElseThrow { NotFoundException(notFoundExceptionMessage) }
 
         return topicViewMapper.map(topic)
     }
@@ -34,9 +37,8 @@ class TopicService(
     }
 
     fun update(topic: UpdateTopicForm) {
-        val topicOnDb = topics.first {
-                t -> t.id == topic.id
-        }
+        val topicOnDb = topics.stream().filter { t -> t.id == topic.id }.findFirst()
+            .orElseThrow { NotFoundException(notFoundExceptionMessage) }
 
         val updatedTopic = Topic(
             id = topic.id,
@@ -52,8 +54,10 @@ class TopicService(
     }
 
     fun delete(id: Long) {
-        topics = topics.filter {
-            topic -> topic.id != id
-        }
+        val topicOnDb = topics.stream().filter { topic ->
+            topic.id == id
+        }.findFirst().orElseThrow { NotFoundException(notFoundExceptionMessage) }
+
+        topics = topics.minus(topicOnDb)
     }
 }
